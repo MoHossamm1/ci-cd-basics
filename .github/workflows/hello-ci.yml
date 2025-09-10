@@ -27,10 +27,14 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       - run: pip install -r requirements.txt
-      - run: pytest -q --maxfail=1 --disable-warnings
+      - name: Run pytest
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q --maxfail=1 --disable-warnings
       - name: Upload pytest cache (optional)
         uses: actions/upload-artifact@v4
         with:
           name: py-test-logs
           path: .pytest_cache
           if-no-files-found: ignore
+
