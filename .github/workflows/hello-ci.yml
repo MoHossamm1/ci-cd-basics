@@ -1,10 +1,10 @@
-name: CI - hello
+name: CI/CD - python + docker + ssh deploy
 
 on:
   push:
   pull_request:
 
-# top-level permissions so we can push to GHCR
+# allow pushing to GHCR
 permissions:
   contents: read
   packages: write
@@ -40,9 +40,6 @@ jobs:
   docker:
     needs: test-py
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ci-cd-basics
@@ -54,7 +51,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # make owner lowercase for GHCR
+      # make owner lowercase for GHCR tag path
       - name: Prepare lowercase owner
         run: echo "OWNER_LC=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
@@ -75,3 +72,21 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE_NAME }}:${{ env.TAG2 }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    needs: docker
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Ubuntu VM over SSH (password)
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 22
+          script: |
+            set -e
+            docker pull ghcr.io/${{ env.OWNER_LC }}/ci-cd-basics:latest
+            docker rm -f ci-cd-basics || true
+            docker run -d --name ci-cd-basics -p 8000:8000 ghcr.io/${{ env.OWNER_LC }}/ci-cd-basics:latest
