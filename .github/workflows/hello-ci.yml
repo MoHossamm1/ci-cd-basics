@@ -4,7 +4,7 @@ on:
   push:
   pull_request:
 
-# Needed so the workflow can push to GHCR
+# top-level permissions so we can push to GHCR
 permissions:
   contents: read
   packages: write
@@ -36,14 +36,8 @@ jobs:
         env:
           PYTHONPATH: .
         run: python -m pytest -q --maxfail=1 --disable-warnings
-      - name: Upload pytest cache (optional)
-        uses: actions/upload-artifact@v4
-        with:
-          name: py-test-logs
-          path: .pytest_cache
-          if-no-files-found: ignore
 
-    docker:
+  docker:
     needs: test-py
     runs-on: ubuntu-latest
     permissions:
@@ -60,7 +54,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Make the owner lowercase for GHCR tags
+      # make owner lowercase for GHCR
       - name: Prepare lowercase owner
         run: echo "OWNER_LC=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
